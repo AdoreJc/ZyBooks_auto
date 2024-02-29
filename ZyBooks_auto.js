@@ -6,7 +6,8 @@
 // @author       adorejc
 // @match        https://*.zybooks.com/*
 // @grant        none
-// @license MIT
+// @supportURL   https://github.com/AdoreJc/ZyBooks_auto/issues
+// @license      MIT
 // @downloadURL
 // @updateURL
 // ==/UserScript==
