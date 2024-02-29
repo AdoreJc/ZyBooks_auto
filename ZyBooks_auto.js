@@ -2,7 +2,7 @@
 // @name         ZyBooks auto
 // @namespace    http://tampermonkey.net/
 // @version      1.1
-// @description  Automatically do ZyBooks
+// @description  Automatically do ZyBooks pages completing all participation activities, but not challenges.
 // @author       adorejc
 // @match        https://*.zybooks.com/*
 // @grant        none
