@@ -6,12 +6,28 @@
 // @author       ZyBooks
 // @match        https://*.zybooks.com/*
 // @grant        none
-// @license MIT  
-// @downloadURL  
-// @updateURL    
+// @license MIT
+// @downloadURL
+// @updateURL
 // ==/UserScript==
 
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
+async function waitForElement(elementString, timeout){
+    const startTime = Date.now();
+    let element = document.querySelector(elementString);
+    while (element === null) {
+        await sleep(100);
+        element = document.querySelector(elementString);
+        if (element !== null) return true;
+        if (Date.now() - startTime >= timeout) {
+            return false;
+        }
+    }
+    return true;
+}
 
 async function goToNext(){
     let next = document.querySelector(".nav-text.next");
@@ -22,44 +38,19 @@ async function goToNext(){
 
 }
 
-async function waitForElement(elementString, timeout){
-   const startTime = Date.now();
-    let timeoutInMS = timeout*1000;
-    let element = document.querySelector(elementString);
-    if(element != null) return true;
-    while(element === null){
-        element = document.querySelector(element);
-        if(element != null) return true;
-        await sleep(100);
-        if(Date.now()-startTime >= timeoutInMS){
-            return false;
-        }
-
-    }
-}
-
-
-async function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-
-
 async function main(){
-    let index = 0
     await solvePage();
     await solveMultipleChoice();
     while(true){
         await sleep(1000);
         await solveMultipleChoice();
         await solveDrapAndDrop();
-            if(await isCompleteExceptChallenge()){
-                await goToNext();
-                await sleep(1000);
-                await solveMultipleChoice();
+        if(await isCompleteExceptChallenge()){
+            await goToNext();
+            await sleep(1000);
+            await solveMultipleChoice();
 
-            }
+        }
     }
 }
 
@@ -85,18 +76,14 @@ async function isCompleteExceptChallenge(){
         })
 
     })
-        let complete = true;
-        await chevrons.forEach((i)=>{
-            if(!i.classList.contains("filled")){
-                complete = false;
-            }
-        });
+    let complete = true;
+    await chevrons.forEach((i)=>{
+        if(!i.classList.contains("filled")){
+            complete = false;
+        }
+    });
     return complete;
 }
-
-
-
-main();
 
 async function solveDrapAndDrop(){
     let activities = document.querySelectorAll(".interactive-activity-container.participation.custom-content-resource");
@@ -122,121 +109,124 @@ async function solveDrapAndDrop(){
 
 
 async function simulateDragAndDrop(sourceNode, destinationNode) {
-  const EVENT_TYPES = {
-    DRAG_END: 'dragend',
-    DRAG_START: 'dragstart',
-    DROP: 'drop'
-  }
-  const dataTransfer = new MyDataTransfer();
+    const EVENT_TYPES = {
+        DRAG_END: 'dragend',
+        DRAG_START: 'dragstart',
+        DROP: 'drop'
+    }
+    const dataTransfer = new MyDataTransfer();
 
-  function createCustomEvent(type) {
-    const event = new CustomEvent(type, { bubbles: true, cancelable: true });
-    event.dataTransfer = dataTransfer;
-    return event;
-  }
+    function createCustomEvent(type) {
+        const event = new CustomEvent(type, { bubbles: true, cancelable: true });
+        event.dataTransfer = dataTransfer;
+        return event;
+    }
 
-  let events = [];
+    let events = [];
 
     // let myDataTransfer = new MyDataTransfer();
-  events.push(createCustomEvent(EVENT_TYPES.DRAG_START));
+    events.push(createCustomEvent(EVENT_TYPES.DRAG_START));
 
-  events.push(createCustomEvent(EVENT_TYPES.DROP));
+    events.push(createCustomEvent(EVENT_TYPES.DROP));
 
     // Dispatch dragstart and dragend events on the sourceNode
-      events.forEach((event) => sourceNode.dispatchEvent(event));
+    events.forEach((event) => sourceNode.dispatchEvent(event));
 
     const dropEvent = createCustomEvent(EVENT_TYPES.DROP);
     destinationNode.dispatchEvent(dropEvent);
-  }
+}
 
 
 class MyDataTransfer {
-  constructor() {
-    this.dropEffect = "all";
-    this.effectAllowed = "all";
-    this.files = [];
-    this.items = new DataTransferItemList();
-    this.types = [];
-  }
-  setData(format, data) {
-    this.data[format] = data;
-  }
-  getData(format) {
-    return this.data[format];
-  }
-  clearData(format = null) {
-    if (format) {
-      delete this.data[format];
-    } else {
-      this.data = {};
+    constructor() {
+        this.dropEffect = "all";
+        this.effectAllowed = "all";
+        this.files = [];
+        this.items = new DataTransferItemList();
+        this.types = [];
     }
-  }
-     clearData(type) {
-    if (type) {
-      const index = this.types.indexOf(type);
-      if (index !== -1) {
-        this.types.splice(index, 1);
-      }
-    } else {
-      this.types = [];
+    setData(format, data) {
+        this.data[format] = data;
     }
-  }
-
-  getData(type) {
-    const index = this.types.indexOf(type);
-    return index !== -1 ? this.items[index].data : '';
-  }
-
-  setData(type, data) {
-    const index = this.types.indexOf(type);
-    if (index !== -1) {
-      this.items[index].data = data;
-    } else {
-      this.types.push(type);
-      this.items.add(new DataTransferItem(type, data));
+    getData(format) {
+        return this.data[format];
     }
-  }
+    clearData(format = null) {
+        if (format) {
+            delete this.data[format];
+        } else {
+            this.data = {};
+        }
+    }
+    clearData(type) {
+        if (type) {
+            const index = this.types.indexOf(type);
+            if (index !== -1) {
+                this.types.splice(index, 1);
+            }
+        } else {
+            this.types = [];
+        }
+    }
 
-  setDragImage(imageElement, x, y) {
-    // Implement the setDragImage functionality here
-  }
+    getData(type) {
+        const index = this.types.indexOf(type);
+        return index !== -1 ? this.items[index].data : '';
+    }
+
+    setData(type, data) {
+        const index = this.types.indexOf(type);
+        if (index !== -1) {
+            this.items[index].data = data;
+        } else {
+            this.types.push(type);
+            this.items.add(new DataTransferItem(type, data));
+        }
+    }
+
+    setDragImage(imageElement, x, y) {
+        // Implement the setDragImage functionality here
+    }
 }
 
 class DataTransferItem {
-  constructor(type, data) {
-    this.type = type;
-    this.data = data;
-  }
+    constructor(type, data) {
+        this.type = type;
+        this.data = data;
+    }
 }
 
 class DataTransferItemList extends Array {
-  add(item) {
-    this.push(item);
-  }
+    add(item) {
+        this.push(item);
+    }
 }
 
-
-
-
-
 async function solveMultipleChoice(){
-       var mulChoice;
+    var mulChoice;
 
-      //answer multiple choice
+    //answer multiple choice
     mulChoice = Array.from(document.querySelectorAll(".question-set-question.multiple-choice-question.ember-view"));
     for(const i of mulChoice){
-            let choices = Array.from(i.querySelectorAll("input"));
-           // await sleep(100);
+        let choices = Array.from(i.querySelectorAll("input"));
+        // await sleep(100);
 
-            for(const choice of choices) {
-                choice.click();
-                await sleep(300);
-                if(i.querySelector(".zb-explanation").classList.contains("correct")) break;
-            }
-        };
+        for(const choice of choices) {
+            choice.click();
+            await sleep(300);
+            if(i.querySelector(".zb-explanation").classList.contains("correct")) break;
+        }
+    };
     function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms));}
 }
 
+async function waitForButtonChange(btnDiv) {
+    // 等待按钮状态变化，不再是 'bounce'（即正在播放或准备播放的状态）
+    while (!btnDiv.classList.contains('rotate-180') && btnDiv.classList.contains('bounce')) {
+        await sleep(500); // 等待一段时间再次检查状态
+        // 这里可以根据需要添加更多的状态检查逻辑
+    }
+}
 
 
 async function solvePage(){
@@ -250,38 +240,39 @@ async function solvePage(){
     var t;
     var mulChoice;
 
-      //answer multiple choice
+    //answer multiple choice
     mulChoice = Array.from(document.querySelectorAll(".question-set-question.multiple-choice-question.ember-view"));
     for(const i of mulChoice){
-            let choices = Array.from(i.querySelectorAll("input"));
-           // await sleep(100);
+        let choices = Array.from(i.querySelectorAll("input"));
+        // await sleep(100);
 
-            for(const choice of choices) {
-                let explanation = i.querySelector(".zb-explanation");
-                if(!explanation?.classList) {
-                    // console.log("explanation",explanation);
-                    // console.log("i: ",i);
-                    break;
-                };
-                let click = !explanation.classList.contains("correct");
-                if(click){
-                    console.log(click)
-                    choice.click();
-                    await sleep(100);
-                    explanation = i.querySelector(".zb-explanation");
-                }
+        for(const choice of choices) {
+            let explanation = i.querySelector(".zb-explanation");
+            if(!explanation?.classList) {
+                // console.log("explanation",explanation);
+                // console.log("i: ",i);
+                break;
+            };
+            let click = !explanation.classList.contains("correct");
+            if(click){
+                console.log(click)
+                choice.click();
+                await sleep(100);
+                explanation = i.querySelector(".zb-explanation");
             }
-        };
+        }
+    };
+
 
 
     async function zy(){
 
         function setKeywordText(text, element) {
-        var el = element;
-        el.value = text;
-        var evt = document.createEvent("Events");
-        evt.initEvent("change", true, true);
-        el.dispatchEvent(evt);
+            var el = element;
+            el.value = text;
+            var evt = document.createEvent("Events");
+            evt.initEvent("change", true, true);
+            el.dispatchEvent(evt);
         };
 
         function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms));}
@@ -316,18 +307,13 @@ async function solvePage(){
         // text answer box
         t = Array.from(document.getElementsByClassName("ember-text-area"));
 
-        // Start Slideshow
-        e.forEach((i)=>{
-            if (i.ariaLabel == "Play"){
-                i.click();
-            }
-        });
-        //Continue slideshow
+        //Start slideshow
         s.forEach((i)=>{
             if (i.innerHTML == "Start"){
                 i.click();
             }
         });
+
         // Click 2x speed
         c.forEach((i)=>{
             if (i.children[0].children[0].checked==false){
@@ -335,7 +321,14 @@ async function solvePage(){
             }
         });
 
-
+        // Start Slideshow
+        for (const i of e){
+            let btnDiv = i.querySelector('div');
+            if (btnDiv && btnDiv.classList.contains('bounce')) {
+                i.click();
+                console.log('等待下一步或重新开始');
+            }
+        }
 
 
 
@@ -358,14 +351,16 @@ async function solvePage(){
                     count++;
                 });
                 s.forEach((i)=>{
-            if (i.innerHTML == "Check"){
-                i.click();
-            }
-        });
-            tdone = true;
+                    if (i.innerHTML == "Check"){
+                        i.click();
+                    }
+                });
+                tdone = true;
             }
         }
     }
 
     setInterval(zy,100);
 }
+
+main();
