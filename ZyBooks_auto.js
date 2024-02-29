@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         ZyBooks auto
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Automatically do ZyBooks
-// @author       ZyBooks
+// @author       adorejc
 // @match        https://*.zybooks.com/*
 // @grant        none
 // @license MIT
@@ -84,6 +84,13 @@ async function isCompleteExceptChallenge(){
     });
     return complete;
 }
+
+//Check if the question is completed
+function isQuestionCompleted(questionElement) {
+    const completedIndicator = questionElement.querySelector('div[aria-label="Question completed"]');
+    return completedIndicator !== null;
+}
+
 
 async function solveDrapAndDrop(){
     let activities = document.querySelectorAll(".interactive-activity-container.participation.custom-content-resource");
@@ -202,12 +209,16 @@ class DataTransferItemList extends Array {
     }
 }
 
+//Solve multiple choice questions
 async function solveMultipleChoice(){
     var mulChoice;
-
     //answer multiple choice
     mulChoice = Array.from(document.querySelectorAll(".question-set-question.multiple-choice-question.ember-view"));
     for(const i of mulChoice){
+        if (isQuestionCompleted(i)) {
+            //console.log("Skip finished question");
+            continue;
+        }
         let choices = Array.from(i.querySelectorAll("input"));
         // await sleep(100);
 
@@ -217,14 +228,12 @@ async function solveMultipleChoice(){
             if(i.querySelector(".zb-explanation").classList.contains("correct")) break;
         }
     };
-    function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms));}
 }
 
+//Check Play button state
 async function waitForButtonChange(btnDiv) {
-    // 等待按钮状态变化，不再是 'bounce'（即正在播放或准备播放的状态）
     while (!btnDiv.classList.contains('rotate-180') && btnDiv.classList.contains('bounce')) {
-        await sleep(500); // 等待一段时间再次检查状态
-        // 这里可以根据需要添加更多的状态检查逻辑
+        await sleep(500);
     }
 }
 
