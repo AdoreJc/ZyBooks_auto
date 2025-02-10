@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ZyBooks auto
 // @namespace    http://tampermonkey.net/
-// @version      1.1
-// @description  Automatically do ZyBooks pages completing all participation activities, but not challenges.
+// @version      1.1.2
+// @description  Automatically do ZyBooks
 // @author       adorejc
 // @match        https://*.zybooks.com/*
 // @grant        none
@@ -36,22 +36,37 @@ async function goToNext(){
     await sleep(1000);
     await waitForElement(".nav-text.next", 5000);
     console.log("Ass");
-
 }
 
-async function main(){
-    await solvePage();
-    await solveMultipleChoice();
-    while(true){
-        await sleep(1000);
+async function main() {
+    try {
+        await solvePage();
         await solveMultipleChoice();
-        await solveDrapAndDrop();
-        if(await isCompleteExceptChallenge()){
-            await goToNext();
+        while (true) {
             await sleep(1000);
-            await solveMultipleChoice();
+            try {
+                await solveMultipleChoice();
+            } catch (err) {
+                console.error("Error in solveMultipleChoice:", err);
+            }
+            try {
+                await solveDrapAndDrop();
+            } catch (err) {
+                console.error("Error in solveDrapAndDrop:", err);
+            }
+            if (await isCompleteExceptChallenge()) {
+                await goToNext();
+                await sleep(1000);
 
+                try {
+                    await solveMultipleChoice();
+                } catch (err) {
+                    console.error("Error in solveMultipleChoice after goToNext:", err);
+                }
+            }
         }
+    } catch (err) {
+        console.error("Error in main function:", err);
     }
 }
 
@@ -64,7 +79,6 @@ async function isComplete(){
         }
     });
     return complete;
-
 }
 
 async function isCompleteExceptChallenge(){
@@ -75,7 +89,6 @@ async function isCompleteExceptChallenge(){
         chevs.forEach((j)=>{
             chevrons.push(j);
         })
-
     })
     let complete = true;
     await chevrons.forEach((i)=>{
@@ -85,7 +98,6 @@ async function isCompleteExceptChallenge(){
     });
     return complete;
 }
-
 //Check if the question is completed
 function isQuestionCompleted(questionElement) {
     const completedIndicator = questionElement.querySelector('div[aria-label="Question completed"]');
@@ -211,24 +223,55 @@ class DataTransferItemList extends Array {
 }
 
 //Solve multiple choice questions
-async function solveMultipleChoice(){
+async function solveMultipleChoice() {
     var mulChoice;
-    //answer multiple choice
+    // Get Motiple questions
     mulChoice = Array.from(document.querySelectorAll(".question-set-question.multiple-choice-question.ember-view"));
-    for(const i of mulChoice){
+    if (mulChoice.length === 0) {
+        console.log("No multiple choice questions found.");
+        return;
+    }
+
+    for (const i of mulChoice) {
         if (isQuestionCompleted(i)) {
-            //console.log("Skip finished question");
+            console.log("Skip finished question");
             continue;
         }
         let choices = Array.from(i.querySelectorAll("input"));
-        // await sleep(100);
 
-        for(const choice of choices) {
+        for (const choice of choices) {
             choice.click();
             await sleep(300);
-            if(i.querySelector(".zb-explanation").classList.contains("correct")) break;
+
+            let explanation;
+            for (let attempt = 0; attempt < 10; attempt++) {
+                explanation = i.querySelector(".zb-explanation");
+                if (explanation && explanation.classList.contains("correct")) {
+                    console.log("Correct answer found");
+                    break;
+                }
+                await sleep(300);
+            }
+
+            if (explanation && explanation.classList.contains("correct")) {
+                break;
+            }
         }
-    };
+    }
+}
+
+async function playAnimationStart() {
+    const playAnimation = document.querySelectorAll('.interactive-activity-container.animation-player-content-resource.participation.large.ember-view');
+    for (const i of pkayAnimation){
+        if (activityType) {
+            const startButton = document.querySelector('.zb-button.primary.raised.start-button.start-graphic');
+
+            if (startButton && startButton.textContent.trim() === "Start") {
+                startButton.click();
+            }
+        }
+    }
+
 }
 
 //Check Play button state
@@ -259,8 +302,8 @@ async function solvePage(){
         for(const choice of choices) {
             let explanation = i.querySelector(".zb-explanation");
             if(!explanation?.classList) {
-                // console.log("explanation",explanation);
-                // console.log("i: ",i);
+                console.log("explanation",explanation);
+                console.log("i: ",i);
                 break;
             };
             let click = !explanation.classList.contains("correct");
@@ -273,104 +316,79 @@ async function solvePage(){
         }
     };
 
-
-
-    async function zy(){
-
+    async function zy() {
         function setKeywordText(text, element) {
             var el = element;
             el.value = text;
             var evt = document.createEvent("Events");
             evt.initEvent("change", true, true);
             el.dispatchEvent(evt);
-        };
+        }
 
-        function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms));}
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
 
         function decodeHtml(html) {
             var txt = document.createElement("textarea");
             txt.innerHTML = html;
             return txt.value;
         }
-
-
-
         // Slideshow play
         e = Array.from(document.getElementsByClassName("zb-button"));
         // start button
         s = Array.from(document.getElementsByClassName("title"));
         // 2x speed button
         c = Array.from(document.getElementsByClassName("speed-control"));
-        //multiple choice answers
 
-
-        // Show answer on text answer
-        var temp = a;
-        a = Array.from(document.getElementsByClassName("show-answer-button"));
-
-        if (!a.every((val, index) => val === temp[index])){
-            adone = false;
-            tdone = false;
-        }
-        //forfeitted answers
-        f = Array.from(document.getElementsByClassName("forfeit-answer"));
-        // text answer box
-        t = Array.from(document.getElementsByClassName("ember-text-area"));
-
-        //Start slideshow
+        // Start Slideshow
+        e.forEach((i)=>{
+            if (i.ariaLabel == "Play" && !i.children[0].classList.contains('rotate-180')){
+                i.click();
+            }
+        });
+        //Continue slideshow
         s.forEach((i)=>{
             if (i.innerHTML == "Start"){
                 i.click();
             }
         });
-
         // Click 2x speed
         c.forEach((i)=>{
             if (i.children[0].children[0].checked==false){
                 i.children[0].children[0].click();
             }
         });
-
-        // Start Slideshow
-        for (const i of e){
-            let btnDiv = i.querySelector('div');
-            if (btnDiv && btnDiv.classList.contains('bounce')) {
-                i.click();
-                console.log('等待下一步或重新开始');
+        let questions = Array.from(document.getElementsByClassName("question-set-question"));
+        for (const question of questions) {
+            let completionStatus = question.querySelector(".question-chevron");
+            if (completionStatus && completionStatus.classList.contains("filled")) {
+                console.log("Skipping completed question.");
+                continue;
             }
-        }
+            let showAnswerButton = question.querySelector(".show-answer-button");
+            if (showAnswerButton) {
+                showAnswerButton.click();
+                await sleep(300)
+            }
+            let answers = Array.from(question.getElementsByClassName("forfeit-answer"));
+            let textArea = question.querySelector(".ember-text-area");
 
+            if (answers.length > 0 && textArea) {
+                let answerText = answers.map(answer => decodeHtml(answer.innerText)).join(" or ");
+                setKeywordText(answerText, textArea);
+                await sleep(100);
 
-
-        // Double click show answer
-        if (!adone && a.length > 0){
-            a.forEach((i)=>{
-                i.click();
-                i.click();
-            });
-            adone = true;
-        }
-
-        // Enter answer and click
-        if (adone && !tdone){
-            if (f.length == t.length){
-                let count = 0;
-                t.forEach((i)=>{
-                    i.value = decodeHtml(f[count].innerHTML);
-                    setKeywordText(i.value, i);
-                    count++;
-                });
-                s.forEach((i)=>{
-                    if (i.innerHTML == "Check"){
-                        i.click();
-                    }
-                });
-                tdone = true;
+                let checkButton = question.querySelector(".check-button");
+                if (checkButton) {
+                    checkButton.click();
+                    await sleep(300);
+                }
             }
         }
     }
+    setInterval(zy, 2000);
 
-    setInterval(zy,100);
 }
 
 main();
